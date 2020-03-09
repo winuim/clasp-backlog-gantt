@@ -38,6 +38,7 @@ export function backlogApiGet(url: string): BacklogResponse {
         content: content
       };
     }
+    console.info(":contentText>>>" + contentText);
     return {
       responseCode: responseCode,
       content: contentText
