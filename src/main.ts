@@ -7,29 +7,53 @@ import { getIssues, getIssuesCount } from "./backlogApiIssues";
 function onOpen(): void {
   SpreadsheetApp.getUi()
     .createMenu("GAS拡張Menu")
-    .addItem("Backlog接続確認", "connectTest")
+    .addItem("環境設定", "showConfig")
     .addSeparator()
     .addItem("タスク一覧を取得する", "getTasksList")
     .addToUi();
 }
 
 const scriptProperties = PropertiesService.getScriptProperties();
+const userProperties = PropertiesService.getUserProperties();
+const BACKLOG_APIKEY = userProperties.getProperty("BACKLOG_APIKEY");
 const BACKLOG_BASE_URL = scriptProperties.getProperty("BACKLOG_BASE_URL");
-const BACKLOG_APIKEY = scriptProperties.getProperty("BACKLOG_APIKEY");
-const BACKLOG_PROJECTIDORKEY = scriptProperties.getProperty(
-  "BACKLOG_PROJECTID"
-);
-const BACKLOG_MILESTONE_ID = scriptProperties.getProperty(
-  "BACKLOG_MILESTONE_ID"
-);
+const BACKLOG_PROJECTID = scriptProperties.getProperty("BACKLOG_PROJECTID");
+const BACKLOG_MILESTONEID = scriptProperties.getProperty("BACKLOG_MILESTONEID");
+
+function showConfig() {
+  const htmlOutput = HtmlService.createTemplateFromFile("index")
+    .evaluate()
+    .setTitle("設定");
+  SpreadsheetApp.getUi().showSidebar(htmlOutput);
+}
+
+function saveUserPrefs(apikey: string): void {
+  console.log("save apikey: " + BACKLOG_APIKEY + " ->>>>> " + apikey);
+  userProperties.setProperty("BACKLOG_APIKEY", apikey);
+}
+
+function saveScriptPrefs(
+  baseUrl: string,
+  projectId: string,
+  milestoneId: string
+): void {
+  console.log("save baseUrl: " + BACKLOG_BASE_URL + " ->>>>> " + baseUrl);
+  scriptProperties.setProperty("BACKLOG_BASE_URL", baseUrl);
+  console.log("save projectId: " + BACKLOG_PROJECTID + " ->>>>> " + projectId);
+  scriptProperties.setProperty("BACKLOG_PROJECTID", projectId);
+  console.log(
+    "save milestoneId: " + BACKLOG_MILESTONEID + " ->>>>> " + milestoneId
+  );
+  scriptProperties.setProperty("BACKLOG_MILESTONEID", milestoneId);
+}
 
 function connectTest(): void {
   const result = getUsersMyself(BACKLOG_BASE_URL, BACKLOG_APIKEY);
   let message = "";
   if (result) {
-    message = "name: " + result.name + " 接続OK";
+    message = result.name + " Backlog接続OK";
   } else {
-    message = "接続Error";
+    message = "Backlog接続Error";
   }
   SpreadsheetApp.getUi().alert(message);
 }
@@ -66,7 +90,7 @@ enum sheetIndex {
   progress
 }
 
-const sheetData: any = [];
+let sheetData: any = [];
 function appendScheduleSheet(rows: any[]): void {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName("schedule");
@@ -79,7 +103,7 @@ function getIssuesList(milestoneId: string): number {
   const amount = getIssuesCount(
     BACKLOG_BASE_URL,
     BACKLOG_APIKEY,
-    BACKLOG_PROJECTIDORKEY,
+    BACKLOG_PROJECTID,
     milestoneId
   );
   if (amount == 0) {
@@ -93,16 +117,16 @@ function getIssuesList(milestoneId: string): number {
     const result = getIssues(
       BACKLOG_BASE_URL,
       BACKLOG_APIKEY,
-      BACKLOG_PROJECTIDORKEY,
+      BACKLOG_PROJECTID,
       milestoneId,
       "summary",
       offset,
       count
     );
     if (result.length > 0) {
-      result.forEach(issue => {
+      const rowData = result.map(issue => {
         console.log({ issue });
-        const rowData = [];
+        const issueData = [];
         let startDate = "";
         if (issue.startDate) {
           startDate = Utilities.formatDate(
@@ -119,15 +143,16 @@ function getIssuesList(milestoneId: string): number {
             "yyyy/MM/dd"
           );
         }
-        rowData[sheetIndex.lv5] = issue.id;
-        rowData[sheetIndex.lv2] = issue.summary;
-        rowData[sheetIndex.plannedStart] = startDate;
-        rowData[sheetIndex.plannedFinish] = dueDate;
-        rowData[sheetIndex.plannedWorkload] = 1;
-        rowData[sheetIndex.responsiblity] = issue.assignee.name;
-        rowData[sheetIndex.progress] = getProgress(issue.status);
-        sheetData.push(rowData);
+        issueData[sheetIndex.lv5] = issue.id;
+        issueData[sheetIndex.lv2] = issue.summary;
+        issueData[sheetIndex.plannedStart] = startDate;
+        issueData[sheetIndex.plannedFinish] = dueDate;
+        issueData[sheetIndex.plannedWorkload] = 1;
+        issueData[sheetIndex.responsiblity] = issue.assignee.name;
+        issueData[sheetIndex.progress] = getProgress(issue.status);
+        return issueData;
       });
+      sheetData = Array.prototype.concat(sheetData, rowData);
     }
 
     quantity -= count;
@@ -142,14 +167,20 @@ function getTasksList(): void {
   const result = getVersions(
     BACKLOG_BASE_URL,
     BACKLOG_APIKEY,
-    BACKLOG_PROJECTIDORKEY
+    BACKLOG_PROJECTID
   );
+  const milestoneIds = BACKLOG_MILESTONEID.split(",");
+
   if (result.length > 0) {
     result.forEach(version => {
       if (version.archived) {
         return;
       }
+      if (!milestoneIds.includes(version.id.toString())) {
+        return;
+      }
       console.log({ version });
+
       const rowData = [];
       let startDate = "";
       if (version.startDate) {

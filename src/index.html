@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons1.css">
+    <style>
+        .branding-below {
+            bottom: 56px;
+            top: 0;
+        }
+    </style>
+    <script>
+        function onSuccess(success) {
+            var div = document.getElementById('output');
+            div.innerHTML = 'saved successfully';
+        }
+        function saveUserPrefs() {
+            var div = document.getElementById('output');
+            div.innerHTML = 'user prefs saving...';
+            var apikey = document.getElementById('apikey');
+            google.script.run.withSuccessHandler(onSuccess).saveUserPrefs(apikey.value);
+        }
+        function saveScriptPrefs() {
+            var div = document.getElementById('output');
+            div.innerHTML = 'script prefs saving...';
+            var baseurl = document.getElementById('baseurl');
+            var projectid = document.getElementById('projectid');
+            var milestoneid = document.getElementById('milestoneid');
+            google.script.run.withSuccessHandler(onSuccess).saveScriptPrefs(baseurl.value, projectid.value, milestoneid.value);
+        }
+    </script>
+</head>
+
+<body>
+    <div class="sidebar branding-below">
+        <div class="block">
+            <label><b>ユーザ固有設定</b></label>
+        </div>
+        <div class="inline form-group">
+            <label for="apikey">BACKLOG_APIKEY</label>
+            <input type="text" id="apikey" style="width: 200px;" value="<?= BACKLOG_APIKEY ?>">
+        </div>
+        <div class="block">
+            <button class="blue" onclick="saveUserPrefs();">保存</button>
+        </div>
+        <div class="block">
+            <label><b>共通設定</b></label>
+        </div>
+        <div class="inline form-group">
+            <label for="baseurl">BACKLOG_BASE_URL</label>
+            <input type="text" id="baseurl" style="width: 200px;" value="<?= BACKLOG_BASE_URL ?>">
+            <label for="projectid">BACKLOG_PROJECTID</label>
+            <input type="text" id="projectid" style="width: 200px;" value="<?= BACKLOG_PROJECTID ?>">
+            <label for="milestoneid">BACKLOG_MILESTONEID</label>
+            <input type="text" id="milestoneid" style="width: 200px;" value="<?= BACKLOG_MILESTONEID ?>">
+        </div>
+        <div class="block">
+            <button class="blue" onclick="saveScriptPrefs();">保存</button>
+        </div>
+        <br />
+        <div class="block">
+            <label>設定確認</label>
+        </div>
+        <div class="inline form-group">
+            <button class="red" onclick="google.script.run.connectTest();">実行</button>
+        </div>
+        <br />
+        <hr width="95%">
+        <div id="output"></div>
+    </div>
+    <div class="sidebar bottom">
+    </div>
+</body>
+
+</html>
